@@ -1,0 +1,8 @@
+CREATE OR REPLACE procedure MSTR.log_001_backup
+as
+BEGIN
+   PANDAS_090_POST_TO_SHAREP_v2.RETRY_N_TIMES (
+      3,
+      '{ Title: "Tre", Content: "' || PANDAS_001_REPORT_EXECUTE_v4.return_grid_as_html('QUIRO_DESARROLLO','CFC2C30F484F1C387C39938808BD6152')|| '", Result: "SUCCESS"  }');
+END;
+/

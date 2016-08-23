@@ -1,0 +1,7 @@
+CREATE OR REPLACE PACKAGE MSTR.pandas_000_report_list
+AS
+   con_str_base_url   CONSTANT VARCHAR2 (1024) := 'https://pandas:8443/MicroStrategyConnector';
+
+   PROCEDURE xml;
+END;
+/

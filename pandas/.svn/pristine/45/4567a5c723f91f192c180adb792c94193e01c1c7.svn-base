@@ -1,0 +1,24 @@
+CREATE OR REPLACE FORCE VIEW MSTR.MSTR_UTL_SCHEDULER_JOB_LOG_LE1
+("Title", "Fecha_inicio_tarea", "Duracion", "Carga", "Resultado", 
+ "Informacion", "Clave_log")
+AS 
+SELECT 'Copia de Seguridad Oracle' "Title",
+          ST "Fecha_inicio_tarea",
+          DU "Duracion",
+          NULL "Carga",
+          STATUS "Resultado",
+          NULL "Informacion",
+          RECID "Clave_log"
+     FROM (  SELECT TO_CHAR (start_time, 'dd-mon hh24:mi') ST,
+                    ROUND ( (end_time - start_time) * 24, 2) DU,
+                    STATUS,
+                    RECID,
+                    RANK () OVER (ORDER BY MAX (END_TIME) DESC NULLS LAST) WJXBFS2                                             --,
+               FROM v$rman_status
+              WHERE OPERATION = 'BACKUP'
+           GROUP BY TO_CHAR (start_time, 'dd-mon hh24:mi'),
+                    ROUND ( (end_time - start_time) * 24, 2),
+                    STATUS,
+                    RECID)
+                    WHERE WJXBFS2 =1
+/

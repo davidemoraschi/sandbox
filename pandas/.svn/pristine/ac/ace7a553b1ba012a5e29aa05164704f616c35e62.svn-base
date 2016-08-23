@@ -1,0 +1,4 @@
+CREATE OR REPLACE package MSTR.PANDAS_092_MAKE_CALL
+as
+end;
+/

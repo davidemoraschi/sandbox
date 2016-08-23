@@ -1,0 +1,231 @@
+CREATE OR REPLACE PACKAGE BODY MSTR_SIGLO.ETL_LOAD_GA03B
+AS
+   /******************************************************************************
+      NAME:       ETL_LOAD_INFHOS
+      PURPOSE:
+
+      REVISIONS:
+      Ver        Date        Author           Description
+      ---------  ----------  ---------------  ------------------------------------
+      1.0        9/17/2012      Davide       1. Created this package body.
+   ******************************************************************************/
+
+   PROCEDURE P_001 (Param1 IN NUMBER DEFAULT NULL)
+   IS
+      v_inicio_ts           DATE;
+      v_fin_ts              DATE;
+      v_elapsed             NUMBER;
+      v_last_refresh        DATE;
+      v_area_hospitalaria   VARCHAR2 (10);
+   BEGIN
+      v_inicio_ts := SYSDATE;
+
+--      SELECT NATID_AREA_HOSPITALARIA INTO v_area_hospitalaria FROM MSTR_UTL_CODIGOS;
+
+      BEGIN
+         EXECUTE IMMEDIATE 'DROP TABLE TEMP_DET_GA02B_01';
+            EXCEPTION
+               WHEN OTHERS
+               THEN
+                  NULL;
+      END;
+
+      BEGIN
+         EXECUTE IMMEDIATE
+            'CREATE TABLE TEMP_DET_GA02B_01
+NOLOGGING
+NOMONITORING
+PARALLEL AS
+        SELECT TRUNC (MIN_FECHAENTREGA) NATID_DIA,
+                     PED.ORGANOGESTOR NATID_ORGANOGESTOR,
+                     ECONOMICA NATID_ECONOMICA_N4,
+                     ARTICULO NATID_ARTICULO,
+                     SUM (IMPORTELINEA) GA02B
+            FROM ( -- Si la línea pedido tiene entrega coge la fecha minima de entrega
+                        SELECT     MIN (PENT.FECHAENTREGA) MIN_FECHAENTREGA, PENT.PEDIDOLINEA
+                                FROM REP_PRO_SIGLO.PED_PROGRAMENTREGA@SYG PENT JOIN REP_PRO_SIGLO.PED_PEDIDOLINEA@SYG PL1 ON (PENT.PEDIDOLINEA = PL1.ID)
+                             WHERE PENT.ACTIVO = ''T''
+                        GROUP BY PENT.PEDIDOLINEA) PLCE
+                     JOIN REP_PRO_SIGLO.PED_PEDIDOLINEA@SYG PL2
+                         ON (PLCE.PEDIDOLINEA = PL2.ID)
+                     JOIN REP_PRO_SIGLO.PED_PEDIDO@SYG PED
+                         ON (PED.ID = PL2.PEDIDO)
+                     JOIN REP_PRO_SIGLO.PED_PROPUESTASL@SYG PRO
+                         ON (PL2.PROPUESTALINEA = PRO.ID)
+         WHERE PL2.ACTIVO = ''T''
+    GROUP BY TRUNC (MIN_FECHAENTREGA),
+                     PED.ORGANOGESTOR,
+                     ECONOMICA,
+                     ARTICULO';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+      BEGIN
+         EXECUTE IMMEDIATE 'DROP TABLE TEMP_DET_GA02B_02';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+     
+      BEGIN
+         EXECUTE IMMEDIATE
+            'CREATE TABLE TEMP_DET_GA02B_02
+NOLOGGING
+NOMONITORING
+PARALLEL AS
+        SELECT TRUNC (FECHAPEDIDO) NATID_DIA,
+                     PED.ORGANOGESTOR NATID_ORGANOGESTOR,
+                     ECONOMICA NATID_ECONOMICA_N4,
+                     ARTICULO NATID_ARTICULO,
+                     SUM (IMPORTELINEA) GA02B
+            FROM REP_PRO_SIGLO.PED_PEDIDOLINEA@SYG PL2
+                     JOIN REP_PRO_SIGLO.PED_PEDIDO@SYG PED
+                         ON (PED.ID = PL2.PEDIDO)
+                     JOIN REP_PRO_SIGLO.PED_PROPUESTASL@SYG PRO
+                         ON (PL2.PROPUESTALINEA = PRO.ID)
+         WHERE PL2.ACTIVO = ''T''
+                     -- Si la línea pedido no tiene entrega coge la fecha del pedido
+                     AND PL2.ID NOT IN (SELECT DISTINCT ENT.PEDIDOLINEA
+                                                                FROM REP_PRO_SIGLO.PED_PROGRAMENTREGA@SYG ENT
+                                                             WHERE ENT.ACTIVO = ''T'')
+    GROUP BY TRUNC (FECHAPEDIDO),
+                     PED.ORGANOGESTOR,
+                     ECONOMICA,
+                     ARTICULO';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+
+      BEGIN
+         EXECUTE IMMEDIATE 'DROP TABLE MSTR_DET_GA02B';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+     
+      BEGIN
+         EXECUTE IMMEDIATE
+            'CREATE TABLE MSTR_DET_GA02B
+NOLOGGING
+NOMONITORING
+PARALLEL AS
+        SELECT NATID_DIA,
+                     NATID_ORGANOGESTOR,
+                     NATID_ECONOMICA_N4,
+                     NATID_ARTICULO,
+                     SUM (GA02B) GA02B
+            FROM (SELECT GA02B,
+                                     NATID_ARTICULO,
+                                     NATID_DIA,
+                                     NATID_ECONOMICA_N4,
+                                     NATID_ORGANOGESTOR
+                            FROM TEMP_DET_GA02B_01
+                        UNION ALL
+                        SELECT GA02B,
+                                     NATID_ARTICULO,
+                                     NATID_DIA,
+                                     NATID_ECONOMICA_N4,
+                                     NATID_ORGANOGESTOR
+                            FROM TEMP_DET_GA02B_02)
+    GROUP BY NATID_DIA,
+                     NATID_ORGANOGESTOR,
+                     NATID_ECONOMICA_N4,
+                     NATID_ARTICULO';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+
+      BEGIN
+         EXECUTE IMMEDIATE 'ALTER TABLE MSTR_SIGLO.MSTR_DET_GA02B ADD
+CONSTRAINT MSTR_DET_GA02B_PK
+ PRIMARY KEY (NATID_DIA, NATID_ORGANOGESTOR, NATID_ECONOMICA_N4, NATID_ARTICULO)
+ ENABLE
+ VALIDATE';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+
+      BEGIN
+         EXECUTE IMMEDIATE
+            'ALTER TABLE MSTR_SIGLO.MSTR_DET_GA02B ADD
+CONSTRAINT MSTR_DET_GA02B_R01
+ FOREIGN KEY (NATID_ARTICULO)
+ REFERENCES MSTR_SIGLO.MSTR_MAE_ARTICULOS (NATID_ARTICULO)
+ ENABLE
+ VALIDATE';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+
+      BEGIN
+         EXECUTE IMMEDIATE 'ALTER TABLE MSTR_SIGLO.MSTR_DET_GA02B ADD
+CONSTRAINT MSTR_DET_GA02B_R02
+ FOREIGN KEY (NATID_ECONOMICA_N4)
+ REFERENCES MSTR_SIGLO.MSTR_MAE_ECONOMICA_N4 (NATID_ECONOMICA_N4)
+ ENABLE
+ VALIDATE';
+      --      EXCEPTION
+      --         WHEN OTHERS
+      --         THEN
+      --            NULL;
+      END;
+
+BEGIN
+    SYS.DBMS_STATS.GATHER_TABLE_STATS (OwnName => 'MSTR_SIGLO',
+                                                                         TabName => 'MSTR_DET_GA02B',
+                                                                         Estimate_Percent => SYS.DBMS_STATS.AUTO_SAMPLE_SIZE,
+                                                                         Method_Opt => 'FOR ALL INDEXED COLUMNS SIZE AUTO ',
+                                                                         Degree => NULL,
+                                                                         Cascade => TRUE,
+                                                                         No_Invalidate => FALSE);
+END;
+
+      --     SELECT MAX (LAST_REFRESH_DATE) INTO v_last_refresh FROM MSTR_DET_CAMAS_DEL_DIA;
+
+      v_fin_ts := SYSDATE;
+      v_elapsed := (v_fin_ts - v_inicio_ts) * 24 * 60;
+   --      MSTR.PANDAS_090_POST_TO_SHAREP_v3.RETRY_N_TIMES (
+   --         3,
+   --         '{ Title: "Carga Censo de Camas", Content: "'
+   --         || '<table border=''1'' cellpadding=''3''><tr><td bgcolor=''#CEA539''>Última Ejecución</td><td bgcolor=''#CEA539''>Duración (min.)</td><td bgcolor=''#CEA539''>Fecha Replica</td></tr><tr><td bgcolor=''#232325''>'
+   --         || TO_CHAR (SYSDATE, 'dd-mon hh24:mi')
+   --         || '</td><td>'
+   --         || ROUND (v_elapsed, 2)
+   --         || '</td><td>'
+   --         || TO_CHAR (v_last_refresh, 'dd-mon hh24:mi')
+   --         || '</td></tr></table> '
+   --         || '", Result: "SUCCESS"  }');
+   --      MSTR.PANDAS_093_TWIT.POST_STATUS (
+   --         TO_CHAR (SYSDATE, 'hh24"h"mi') || '+' || v_area_hospitalaria || '+Carga+Censo+de+Camas+completada+#ProyectoPandas',
+   --         'PANDAS_HOSPI');
+   --EXCEPTION
+     -- WHEN OTHERS
+     -- THEN
+         --         BEGIN
+         --            MSTR.PANDAS_093_TWIT.POST_STATUS (
+         --                  'Camas+'
+         --               || TO_CHAR (SYSDATE, 'hh24"h"mi')
+         --               || '+'
+         --               || v_area_hospitalaria
+         --               || '+'
+         --               || SUBSTR (REPLACE (REPLACE (REPLACE (SQLERRM, ' ', '+'), ',', ''), CHR (10), '+'), 1, 90)
+         --               || '...#ProyectoPandas',
+         --               'PANDAS_ERROR');
+         --         END;
+
+         --RAISE;
+   END P_001;
+END;
+/

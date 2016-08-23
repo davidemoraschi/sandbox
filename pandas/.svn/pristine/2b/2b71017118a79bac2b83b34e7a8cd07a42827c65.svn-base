@@ -1,0 +1,26 @@
+CREATE OR REPLACE PROCEDURE MSTR."$metadata"
+IS
+   tmpVar   NUMBER;
+/******************************************************************************
+   NAME:       $metadata
+   PURPOSE:
+
+   REVISIONS:
+   Ver        Date        Author           Description
+   ---------  ----------  ---------------  ------------------------------------
+   1.0        11/09/2013   upddm0       1. Created this procedure.
+
+   NOTES:
+
+   Automatically available Auto Replace Keywords:
+      Object Name:     $metadata
+      Sysdate:         11/09/2013
+      Date and Time:   11/09/2013, 15:42:28, and 11/09/2013 15:42:28
+      Username:        upddm0 (set in TOAD Options, Procedure Editor)
+      Table Name:       (set in the "New PL/SQL Object" dialog)
+
+******************************************************************************/
+BEGIN
+   HTP.p ('ok');
+END "$metadata";
+/

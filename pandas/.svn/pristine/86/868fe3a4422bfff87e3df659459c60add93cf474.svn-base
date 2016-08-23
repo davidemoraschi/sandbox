@@ -1,0 +1,16 @@
+CREATE OR REPLACE PACKAGE MSTR.PANDAS_096_IMPOSSIBLE AS
+/******************************************************************************
+   NAME:       PANDAS_096_IMPOSSIBLE
+   PURPOSE:
+
+   REVISIONS:
+   Ver        Date        Author           Description
+   ---------  ----------  ---------------  ------------------------------------
+   1.0        14/09/2013      upddm0       1. Created this package.
+******************************************************************************/
+
+  FUNCTION MyFunction(Param1 IN NUMBER) RETURN NUMBER;
+  PROCEDURE MyProcedure(Param1 IN NUMBER);
+
+END PANDAS_096_IMPOSSIBLE;
+/

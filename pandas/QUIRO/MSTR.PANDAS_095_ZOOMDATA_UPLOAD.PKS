@@ -1,0 +1,15 @@
+CREATE OR REPLACE PACKAGE MSTR.PANDAS_095_ZOOMDATA_UPLOAD
+AS
+   const_zoomdata_service_prot   CONSTANT VARCHAR2 (10) := 'HTTP/1.1';
+   const_zoomdata_service_host   CONSTANT VARCHAR2 (100) := 'http://localhost:8080/zoomdata/service/upload?source=Real%20time%20Beds';
+   const_zoomdata_service_user   CONSTANT VARCHAR2 (10) := 'admin';
+   const_zoomdata_service_pass   CONSTANT VARCHAR2 (10) := 'admin';
+
+   con_str_http_proxy            CONSTANT VARCHAR2 (50) := '10.136.0.13:8080';
+   con_str_wallet_path           CONSTANT VARCHAR2 (50) := 'file:/u01/app/oracle/wallet';
+   con_str_wallet_pass           CONSTANT VARCHAR2 (50) := 'Lepanto1571';
+
+   PROCEDURE SEND_JSON (zoomdata_payload IN VARCHAR2);
+/*  PROCEDURE U_001 (Param1 IN VARCHAR2 DEFAULT NULL, Param2 IN VARCHAR2 DEFAULT NULL);*/
+END;
+/

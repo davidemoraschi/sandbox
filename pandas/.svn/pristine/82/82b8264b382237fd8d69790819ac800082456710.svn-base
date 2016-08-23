@@ -1,0 +1,7 @@
+CREATE OR REPLACE PACKAGE MSTR.home
+IS
+   PROCEDURE htm;
+   PROCEDURE jsp;
+   PROCEDURE asp;
+END home;
+/

@@ -1,0 +1,32 @@
+CREATE OR REPLACE PACKAGE MSTR.PANDAS_090_POST_TO_SHAREP_v2
+AS
+   const_sharepoint_server_ntus    CONSTANT VARCHAR2 (1024) := 'VALME\aaaaaaaa';
+   const_sharepoint_server_ntpw    CONSTANT VARCHAR2 (1024) := '*********';
+   const_sharepoint_service_meth   CONSTANT VARCHAR2 (10) := 'POST';
+   const_sharepoint_service_prot   CONSTANT VARCHAR2 (10) := 'HTTP/1.1';
+   con_str_http_proxy              CONSTANT VARCHAR2 (50) := '10.136.0.13:8080';
+   con_str_wallet_path             CONSTANT VARCHAR2 (50) := 'file:/u01/app/oracle/wallet';
+   con_str_wallet_pass             CONSTANT VARCHAR2 (50) := 'Lepanto1571';
+   con_str_sharepoint_user         CONSTANT VARCHAR2 (500) := 'admin@pandas.eurostrategy.net';
+   con_str_sharepoint_pass         CONSTANT VARCHAR2 (500) := 'Toyotarecalls310';
+   con_str_sharepoint_domain       CONSTANT VARCHAR2 (500) := 'pandasbi';
+   con_str_sharepoint_list         CONSTANT VARCHAR2 (2500) := 'https://pandasbi.sharepoint.com/_vti_bin/ListData.svc/PANDAS_ETL';
+
+   PROCEDURE RETRY_N_TIMES (p_retries_number   IN NUMBER,
+                            p_payload          IN VARCHAR2,
+                            p_user             IN VARCHAR2 DEFAULT con_str_sharepoint_user,
+                            p_password         IN VARCHAR2 DEFAULT con_str_sharepoint_pass,
+                            p_domain           IN VARCHAR2 DEFAULT con_str_sharepoint_domain,
+                            p_list             IN VARCHAR2 DEFAULT con_str_sharepoint_list);
+
+   FUNCTION PANDAS_ETL_LOG (p_payload    IN VARCHAR2,
+                            p_user       IN VARCHAR2 DEFAULT con_str_sharepoint_user,
+                            p_password   IN VARCHAR2 DEFAULT con_str_sharepoint_pass,
+                            p_domain     IN VARCHAR2 DEFAULT con_str_sharepoint_domain,
+                            p_list       IN VARCHAR2 DEFAULT con_str_sharepoint_list)
+      RETURN VARCHAR2;
+
+   FUNCTION LISTDATA (listdata_url IN VARCHAR2, listdata_payload IN VARCHAR2, listdata_charset IN VARCHAR2 DEFAULT 'iso-8859-1')
+      RETURN BOOLEAN;
+END;
+/

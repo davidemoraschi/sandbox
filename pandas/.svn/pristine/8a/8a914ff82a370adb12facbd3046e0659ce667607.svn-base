@@ -1,0 +1,376 @@
+CREATE OR REPLACE PACKAGE BODY MSTR.PANDAS_096_IMPOSSIBLE
+AS
+   PROCEDURE CREATE_PROJECT (p_projectname IN VARCHAR2)
+   IS
+      l_text            VARCHAR2 (32767);
+      p_content         CLOB;
+      l_http_request    UTL_HTTP.req;
+      l_http_response   UTL_HTTP.resp;
+      h_name            VARCHAR2 (32767);
+      h_value           VARCHAR2 (32767);
+   BEGIN
+      UTL_HTTP.set_proxy (con_str_http_proxy);
+      l_http_request := UTL_HTTP.BEGIN_REQUEST ('http://iv.impossiblesoftware.com/iv/apps/api/project/' || p_projectname, 'POST');
+      UTL_HTTP.SET_AUTHENTICATION (l_http_request, 'pandas', 'VARCHAR2(256);');
+      UTL_HTTP.set_persistent_conn_support (TRUE, 5);
+      l_http_response := UTL_HTTP.GET_RESPONSE (l_http_request);
+      DBMS_LOB.createtemporary (p_content, FALSE);
+
+      FOR i IN 1 .. UTL_HTTP.get_header_count (l_http_response)
+      LOOP
+         UTL_HTTP.get_header (l_http_response,
+                              i,
+                              h_name,
+                              h_value);
+
+         DBMS_OUTPUT.put_line (i || '.' || h_name || ':' || h_value);
+      END LOOP;
+
+      BEGIN
+         LOOP
+            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+         END LOOP;
+      EXCEPTION
+         WHEN UTL_HTTP.end_of_body
+         THEN
+            UTL_HTTP.end_response (l_http_response);
+      END;
+
+      DBMS_OUTPUT.put_line (p_content);
+      DBMS_LOB.freetemporary (p_content);
+   END;
+
+   PROCEDURE UPLOAD_MOVIE (p_sdljson IN VARCHAR2)
+   IS
+      v_sdljson_test    VARCHAR2 (32767) := '{
+                            "scenes": [
+                                {
+                                    "numframes": 500,
+                                    "tracks": [
+                                        {
+                                            "content": {
+                                                "type": "textsimple",
+                                                "fontsize_d": 48.0,
+                                                "text": {
+                                                    "key": "mytext",
+                                                    "value": "Hello World",
+                                                    "type": "map",
+                                                    "defaultvalue": "Hello World"
+                                                },
+                                                "color": {
+                                                    "blue": 255,
+                                                    "green": 255,
+                                                    "red": 255,
+                                                    "alpha": 255
+                                                },
+                                                "fontsize": 48
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            "params": {
+                                "vparams": {
+                                    "width": 900,
+                                    "videobitrate": 2000,
+                                    "height": 500,
+                                    "videorc": "VRC_BITRATE",
+                                    "videoqp": 16,
+                                    "videocpueffort": 10.0
+                                }
+                            },
+                            "initatstart": false
+                        }';
+      l_text            VARCHAR2 (32767);
+      p_content         CLOB;
+      l_http_request    UTL_HTTP.req;
+      l_http_response   UTL_HTTP.resp;
+      h_name            VARCHAR2 (32767);
+      h_value           VARCHAR2 (32767);
+      v_project_uid     MSTR_UTL_IMPOSSIBLE_PROJECTS.PROJECT_UID%TYPE;
+   BEGIN
+      SELECT PROJECT_UID INTO v_project_uid FROM MSTR_UTL_IMPOSSIBLE_PROJECTS;
+
+      UTL_HTTP.set_proxy (con_str_http_proxy);
+      l_http_request :=
+         UTL_HTTP.BEGIN_REQUEST ('http://iv.impossiblesoftware.com/iv/apps/api/sdl/' || v_project_uid || '/movie', 'POST');
+      UTL_HTTP.SET_AUTHENTICATION (l_http_request, 'pandas', 'VARCHAR2(256);');
+      UTL_HTTP.set_persistent_conn_support (TRUE, 5);
+      UTL_HTTP.set_header (l_http_request, 'Content-Length', LENGTH (v_sdljson_test));
+      UTL_HTTP.WRITE_TEXT (l_http_request, v_sdljson_test);
+
+      l_http_response := UTL_HTTP.GET_RESPONSE (l_http_request);
+      DBMS_LOB.createtemporary (p_content, FALSE);
+
+      FOR i IN 1 .. UTL_HTTP.get_header_count (l_http_response)
+      LOOP
+         UTL_HTTP.get_header (l_http_response,
+                              i,
+                              h_name,
+                              h_value);
+
+         DBMS_OUTPUT.put_line (i || '.' || h_name || ':' || h_value);
+      END LOOP;
+
+      BEGIN
+         LOOP
+            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+         END LOOP;
+      EXCEPTION
+         WHEN UTL_HTTP.end_of_body
+         THEN
+            UTL_HTTP.end_response (l_http_response);
+      END;
+
+      DBMS_OUTPUT.put_line (p_content);
+      DBMS_LOB.freetemporary (p_content);
+   END;
+
+   PROCEDURE UPLOAD_IMAGE (p_projectname   IN VARCHAR2,
+                           p_reportid      IN VARCHAR2,
+                           rWidth          IN NUMBER DEFAULT 750,
+                           rHeight         IN NUMBER DEFAULT 400)
+   IS
+      l_text            VARCHAR2 (32767);
+      p_content         CLOB;
+      l_http_request    UTL_HTTP.req;
+      l_http_response   UTL_HTTP.resp;
+      h_name            VARCHAR2 (32767);
+      h_value           VARCHAR2 (32767);
+      v_project_uid     MSTR_UTL_IMPOSSIBLE_PROJECTS.PROJECT_UID%TYPE;
+      b_graphimage      BLOB;
+      l_buffer_size     NUMBER := 1000;
+      l_substring_msg   BLOB;
+   --      -- IS
+   --      l_url             VARCHAR2 (32000);
+   --      l_sessionState    VARCHAR2 (4000);
+   --      l_clob            CLOB;
+   --      l_xml             XMLTYPE;
+   --      l_msg_id          VARCHAR2 (1000);
+   --      l_image_blob      BLOB;
+   --   --p_content         CLOB;
+   --   --l_http_request    UTL_HTTP.req;
+   --   --l_http_response   UTL_HTTP.resp;
+   --   --l_text            VARCHAR2 (32767);
+   BEGIN
+      SELECT PROJECT_UID INTO v_project_uid FROM MSTR_UTL_IMPOSSIBLE_PROJECTS;
+
+      --
+      --      --   PROCEDURE png (reportId      IN VARCHAR2 DEFAULT '856B1A1A4A82A2A8A8BB8795E93AE208',
+      --      --                  projectName   IN VARCHAR2 DEFAULT const_intelligent_server_proj,
+      --      --                  rWidth        IN NUMBER DEFAULT 750,
+      --      --                  rHeight       IN NUMBER DEFAULT 400)
+      --      --   BEGIN
+      --      DBMS_APPLICATION_INFO.set_client_info ('PANDAS internal');
+      --      DBMS_SESSION.set_identifier ('MicroStrategy Pandas Connector');
+      --      DBMS_APPLICATION_INFO.set_module ('UPLOAD_IMAGE', 'png');
+      --
+      --      l_url :=
+      --            const_host_port
+      --         || const_intelligent_server_wurl
+      --         || 'taskId=login&taskEnv=xml&maxRows=64000&taskContentType=xml&server='
+      --         || const_intelligent_server_name
+      --         || '&project='
+      --         || UTL_URL.escape (p_projectname)
+      --         || '&userid='
+      --         || const_intelligent_server_user
+      --         || '&password='
+      --         || UTL_URL.escape (const_intelligent_server_pass);
+      --      --l_clob := sys.ntlm_http_pkg.get_response_clob (l_url, const_intelligent_server_ntus, const_intelligent_server_ntpw);
+      --      --p_content := HTTPURITYPE.createuri (l_url).getclob ();
+      --      --HTP.p (l_sessionState);
+      --      DBMS_LOB.createtemporary (p_content, FALSE);
+      --      -- Make a HTTP request and get the response.
+      --      UTL_HTTP.set_wallet (PATH => con_str_wallet_path, PASSWORD => con_str_wallet_pass);
+      --      --RETURN;
+      --      l_http_request := UTL_HTTP.begin_request (l_url);
+      --      UTL_HTTP.SET_AUTHENTICATION (l_http_request, const_intelligent_server_user, const_intelligent_server_pass);
+      --      l_http_response := UTL_HTTP.get_response (l_http_request);
+      --
+      --      -- Copy the response into the CLOB.
+      --      BEGIN
+      --         LOOP
+      --            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+      --            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+      --         END LOOP;
+      --      EXCEPTION
+      --         WHEN UTL_HTTP.end_of_body
+      --         THEN
+      --            UTL_HTTP.end_response (l_http_response);
+      --      END;
+      --      DBMS_OUTPUT.PUT_LINE(p_content);
+      --RETURN;
+      --      l_xml := xmltype (p_content);
+      --      l_sessionState := l_xml.EXTRACT ('taskResponse/root/sessionState/text()').getstringval ();
+      --      --HTP.p (l_sessionState);
+      --      DBMS_LOB.freetemporary (p_content);
+      --      --RETURN;
+      --
+      --      l_url :=
+      --            const_host_port
+      --         || const_intelligent_server_wurl
+      --         || 'taskId=reportExecute&taskEnv=xml&taskContentType=xml&sessionState='
+      --         || UTL_URL.escape (l_sessionState)
+      --         || '&reportViewMode=2&reportID='
+      --         || p_reportid;
+      --      --HTP.p (l_url);
+      --      --RETURN;
+      --
+      --      DBMS_LOB.createtemporary (p_content, FALSE);
+      --      -- Make a HTTP request and get the response.
+      --      --UTL_HTTP.set_wallet (PATH => con_str_wallet_path, PASSWORD => con_str_wallet_pass);
+      --      --RETURN;
+      --      l_http_request := UTL_HTTP.begin_request (l_url);
+      --      UTL_HTTP.SET_AUTHENTICATION (l_http_request, const_intelligent_server_user, const_intelligent_server_pass);
+      --      l_http_response := UTL_HTTP.get_response (l_http_request);
+      --
+      --      -- Copy the response into the CLOB.
+      --      BEGIN
+      --         LOOP
+      --            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+      --            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+      --         END LOOP;
+      --      EXCEPTION
+      --         WHEN UTL_HTTP.end_of_body
+      --         THEN
+      --            UTL_HTTP.end_response (l_http_response);
+      --      END;
+      --
+      --      l_xml := xmltype (p_content);
+      --      l_msg_id := l_xml.EXTRACT ('taskResponse/msg/id/text()').getstringval ();
+      --      HTP.p (l_msg_id);
+      --      DBMS_LOB.freetemporary (p_content);
+      --      --      RETURN;
+      --
+      --      --l_clob := sys.ntlm_http_pkg.get_response_clob (l_url, const_intelligent_server_ntus, const_intelligent_server_ntpw);
+      --      --p_content := HTTPURITYPE.createuri ('http://fraterno:8080/MicroStrategy/servlet/taskProc?taskId=reportDataService&taskEnv=xml&taskContentType=xml&server=FRATERNO&project=AREA+QUIRURGICA&userid=Administrator&password=YamanakayGurdon&styleName=CustomoDataReportStyle&reportID=DD4A434548371B060E66EE82A63EE889').getclob ();
+      --
+      --      l_url :=
+      --            const_host_port
+      --         || const_intelligent_server_wurl
+      --         || 'taskId=getReportGraphImage&taskEnv=xml&taskContentType=xml&sessionState='
+      --         || UTL_URL.escape (l_sessionState)
+      --         || '&messageID='
+      --         || l_msg_id
+      --         || '&width='
+      --         || rwidth
+      --         || '&height='
+      --         || rHeight
+      --         || '&imgType=2&availWidth='
+      --         || rwidth
+      --         || '&availHeight='
+      --         || rHeight;
+      --
+      --      DBMS_LOB.createtemporary (p_content, FALSE);
+      --      -- Make a HTTP request and get the response.
+      --      --UTL_HTTP.set_wallet (PATH => con_str_wallet_path, PASSWORD => con_str_wallet_pass);
+      --      --RETURN;
+      --      l_http_request := UTL_HTTP.begin_request (l_url);
+      --      UTL_HTTP.SET_AUTHENTICATION (l_http_request, const_intelligent_server_user, const_intelligent_server_pass);
+      --      l_http_response := UTL_HTTP.get_response (l_http_request);
+      --
+      --      -- Copy the response into the CLOB.
+      --      BEGIN
+      --         LOOP
+      --            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+      --            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+      --         END LOOP;
+      --      EXCEPTION
+      --         WHEN UTL_HTTP.end_of_body
+      --         THEN
+      --            UTL_HTTP.end_response (l_http_response);
+      --      END;
+      --
+      --      l_xml := xmltype (p_content);
+      --      l_image_blob := FLEX_WS_API.CLOBBASE642BLOB (l_xml.EXTRACT ('taskResponse/root/ib/eb/text()').getclobval ());
+      --      --      HTP.p (l_msg_id);
+      --      DBMS_LOB.freetemporary (p_content);
+      --
+      --      --l_clob := sys.ntlm_http_pkg.get_response_clob (l_url, const_intelligent_server_ntus, const_intelligent_server_ntpw);
+      --      --p_content := HTTPURITYPE.createuri ('http://fraterno:8080/MicroStrategy/servlet/taskProc?taskId=reportDataService&taskEnv=xml&taskContentType=xml&server=FRATERNO&project=AREA+QUIRURGICA&userid=Administrator&password=YamanakayGurdon&styleName=CustomoDataReportStyle&reportID=DD4A434548371B060E66EE82A63EE889').getclob ();
+      --      --l_xml := xmltype (l_clob);
+      --      --l_image_blob := FLEX_WS_API.CLOBBASE642BLOB (l_xml.EXTRACT ('taskResponse/root/ib/eb/text()').getclobval ());
+      --      OWA_UTIL.mime_header ('image/png', FALSE, NULL);
+      --      HTP.p ('<HR />Content-length: ' || DBMS_LOB.GETLENGTH (l_image_blob));
+      --      OWA_UTIL.http_header_close;
+      --      WPG_DOCLOAD.download_file (l_image_blob);
+      --
+      --      l_url :=
+      --            const_host_port
+      --         || const_intelligent_server_wurl
+      --         || 'taskId=logout&taskEnv=xml&taskContentType=xml&sessionState='
+      --         || UTL_URL.escape (l_sessionState);
+      --      --l_clob := sys.ntlm_http_pkg.get_response_clob (l_url, const_intelligent_server_ntus, const_intelligent_server_ntpw);
+      --      --p_content := HTTPURITYPE.createuri ('http://fraterno:8080/MicroStrategy/servlet/taskProc?taskId=reportDataService&taskEnv=xml&taskContentType=xml&server=FRATERNO&project=AREA+QUIRURGICA&userid=Administrator&password=YamanakayGurdon&styleName=CustomoDataReportStyle&reportID=DD4A434548371B060E66EE82A63EE889').getclob ();
+      --      l_xml := xmltype (l_clob);
+      --      l_msg_id := l_xml.EXTRACT ('taskResponse/text()').getstringval ();
+      --      DBMS_APPLICATION_INFO.set_module ('REPORT_EXECUTE', NULL);
+      --      --   EXCEPTION
+      --      --      WHEN OTHERS
+      --      --      THEN
+      --      --         PANDAS_ERROR_HANDLER.jsp (SQLERRM, DBMS_UTILITY.format_error_backtrace);
+      --      --         DBMS_APPLICATION_INFO.set_module ('REPORT_EXECUTE', NULL);
+      --      --   END;
+      --      --
+
+      b_graphimage := PANDAS_001_REPORT_EXECUTE_V6.png (reportId => p_reportid, projectName => p_projectname);
+      UTL_HTTP.set_proxy (con_str_http_proxy, 'localhost');
+      l_http_request :=
+         UTL_HTTP.BEGIN_REQUEST (
+            'http://iv.impossiblesoftware.com/iv/apps/api/data/' || v_project_uid || '/' || p_reportid || '.png',
+            'POST');
+      UTL_HTTP.SET_AUTHENTICATION (l_http_request, 'pandas', 'VARCHAR2(256);');
+      UTL_HTTP.set_persistent_conn_support (TRUE, 5);
+      UTL_HTTP.set_header (l_http_request, 'Content-Length', DBMS_LOB.getlength (b_graphimage));
+      DBMS_OUTPUT.PUT_LINE (DBMS_LOB.getlength (b_graphimage));
+
+      --RETURN;
+      <<request_loop>>
+      FOR i IN 0 .. CEIL (DBMS_LOB.getlength (b_graphimage) / l_buffer_size) - 1
+      LOOP
+         --l_substring_msg := SUBSTR (l_string_request, i * l_buffer_size + 1, l_buffer_size);
+         l_substring_msg := DBMS_LOB.SUBSTR (b_graphimage, l_buffer_size, i * l_buffer_size + 1);
+
+         BEGIN
+            --l_raw_data := UTL_RAW.cast_to_raw (l_substring_msg);
+            UTL_HTTP.write_raw (r => l_http_request, data => l_substring_msg);
+         EXCEPTION
+            WHEN NO_DATA_FOUND
+            THEN
+               EXIT request_loop;
+         END;
+      END LOOP request_loop;
+
+      --UTL_HTTP.WRITE_RAW (l_http_request, b_graphimage);
+
+      l_http_response := UTL_HTTP.GET_RESPONSE (l_http_request);
+      DBMS_LOB.createtemporary (p_content, FALSE);
+
+      FOR i IN 1 .. UTL_HTTP.get_header_count (l_http_response)
+      LOOP
+         UTL_HTTP.get_header (l_http_response,
+                              i,
+                              h_name,
+                              h_value);
+
+         DBMS_OUTPUT.put_line (i || '.' || h_name || ':' || h_value);
+      END LOOP;
+
+      BEGIN
+         LOOP
+            UTL_HTTP.read_text (l_http_response, l_text, 32766);
+            DBMS_LOB.writeappend (p_content, LENGTH (l_text), l_text);
+         END LOOP;
+      EXCEPTION
+         WHEN UTL_HTTP.end_of_body
+         THEN
+            UTL_HTTP.end_response (l_http_response);
+      END;
+
+      DBMS_OUTPUT.put_line (p_content);
+      DBMS_LOB.freetemporary (p_content);
+   END;
+END PANDAS_096_IMPOSSIBLE;
+/
